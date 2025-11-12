@@ -1,17 +1,289 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<projectDescription>
-	<name>biydaalt</name>
-	<comment></comment>
-	<projects>
-	</projects>
-	<buildSpec>
-		<buildCommand>
-			<name>org.eclipse.jdt.core.javabuilder</name>
-			<arguments>
-			</arguments>
-		</buildCommand>
-	</buildSpec>
-	<natures>
-		<nature>org.eclipse.jdt.core.javanature</nature>
-	</natures>
-</projectDescription>
+package biydaalt;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+
+class Subject { 
+    public String code;
+    public String name;
+    public float credit;
+
+    public Subject(String code, String name, float credit) {
+        this.code = code;
+        this.name = name;
+        this.credit = credit;
+    }
+    
+    @Override
+    public String toString() {
+        return code + " (" + name + ", " + credit + "кр)";
+    }
+}
+
+
+class Major {
+    public String code;
+    public String name;
+
+    public Major(String code, String name) {
+        this.code = code;
+        this.name = name;
+    }
+    
+    @Override
+    public String toString() {
+        return code + " - " + name;
+    }
+}
+
+class Lessons {
+    public Subject learned;
+    public int score;
+
+    public Lessons(Subject learned, int score) {
+        this.learned = learned;
+        this.score = score;
+    }
+    
+    public float getGPAValue() {
+        if (score >= 96) return 4.0f;
+        if (score >= 91) return 3.7f;
+        if (score >= 88) return 3.4f;
+        if (score >= 84) return 3.0f;
+        if (score >= 81) return 2.7f;
+        if (score >= 78) return 2.4f;
+        if (score >= 74) return 2.0f;
+        if (score >= 71) return 1.7f;
+        if (score >= 68) return 3.0f;
+        if (score >= 64) return 1.0f;
+        if (score >= 60) return 0.7f;
+        return 0.0f; 
+    }
+    
+   
+    public String getGrade() {
+        if (score >= 96) return "A";
+        if (score >= 91) return "A-";
+        if (score >= 88) return "B+";
+        if (score >= 84) return "B";
+        if (score >= 81) return "B-";
+        if (score >= 78) return "C+";
+        if (score >= 74) return "C";
+        if (score >= 71) return "C-";
+        if (score >= 68) return "D+";
+        if (score >= 64) return "D";
+        if (score >= 60) return "D-";
+        return "F";
+    }
+
+    @Override
+    public String toString() {
+        return learned.code + " (Оноо: " + score + ", Үнэлгээ: " + getGrade() + ")";
+    }
+}
+
+
+class Student {
+    public String code;
+    public float GPA;
+   
+    public List<Lessons> lessons; 
+
+    public Student(String code) {
+        this.code = code;
+        this.lessons = new ArrayList<>();
+        this.GPA = 0.0f;
+    }
+    
+    public void calculateGPA() {
+        if (lessons.isEmpty()) {
+            this.GPA = 0.0f;
+            return;
+        }
+
+        float totalWeightedGPA = 0.0f;
+        float totalCredit = 0.0f;
+
+        for (Lessons lesson : lessons) {
+            totalWeightedGPA += lesson.getGPAValue() * lesson.learned.credit;
+            totalCredit += lesson.learned.credit;
+        }
+
+        this.GPA = totalCredit > 0 ? totalWeightedGPA / totalCredit : 0.0f;
+    }
+    
+    @Override
+    public String toString() {
+        return "Student Code: " + code + ", GPA: " + String.format("%.2f", GPA);
+    }
+}
+
+
+public class Registration {
+    
+    public List<Student> studentList;
+    public List<Subject> subjectList;
+    public List<Major> majorList;
+
+    public Registration() {
+        studentList = new ArrayList<>();
+        subjectList = new ArrayList<>();
+        majorList = new ArrayList<>();
+    }
+    
+    private Subject getSubjectByCode(String code) {
+        for (Subject sub : subjectList) {
+            if (sub.code.equals(code)) return sub;
+        }
+        return null; 
+    }
+
+    private Student getStudentByCode(String code) {
+        for (Student student : studentList) {
+            if (student.code.equals(code)) return student;
+        }
+        return null;
+    }
+  
+    public void loadDataFromFiles(String subjectsFile, String professionsFile, String examsFile) {
+        
+        try (BufferedReader input = new BufferedReader(new FileReader(subjectsFile))) {
+            String line;
+            while ((line = input.readLine()) != null) {
+                String[] values = line.split("/");
+                if (values.length >= 3) {
+                    subjectList.add(new Subject(values[0], values[1], Float.parseFloat(values[2])));
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found: " + subjectsFile);
+            System.exit(1);
+        } catch (IOException e) { System.err.println("I/O Error: " + subjectsFile); System.exit(1); }
+
+        try (BufferedReader input = new BufferedReader(new FileReader(professionsFile))) {
+            String line;
+            while ((line = input.readLine()) != null) {
+                String[] values = line.split("/");
+                if (values.length >= 2) {
+                    majorList.add(new Major(values[0], values[1]));
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found: " + professionsFile);
+            System.exit(1);
+        } catch (IOException e) { System.err.println("I/O Error: " + professionsFile); System.exit(1); }
+
+        try (BufferedReader input = new BufferedReader(new FileReader(examsFile))) {
+            String line;
+            while ((line = input.readLine()) != null) {
+                String[] values = line.split("/");
+                if (values.length >= 3) {
+                    String studentCode = values[0];
+                    String lessonCode = values[1];
+                    int score = Integer.parseInt(values[2]);
+                    
+                    Subject subject = getSubjectByCode(lessonCode);
+                    if (subject == null) continue;
+
+                    Student student = getStudentByCode(studentCode);
+                    if (student == null) {
+                        student = new Student(studentCode);
+                        studentList.add(student);
+                    }
+                    
+                    student.lessons.add(new Lessons(subject, score));
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found: " + examsFile);
+            System.exit(1);
+        } catch (IOException e) { System.err.println("I/O Error: " + examsFile); System.exit(1); }
+        
+        for (Student student : studentList) {
+            student.calculateGPA();
+        }
+    }
+
+    public void displaySubjectList() {
+        System.out.println("\n--- 1. Нийт хичээлүүдийн жагсаалт ---");
+        subjectList.forEach(System.out::println);
+    }
+
+    public void displayMajorList() {
+        System.out.println("\n--- 2. Нийт мэргэжлүүдийн жагсаалт ---");
+        majorList.forEach(System.out::println);
+    }
+
+    public void displayAverageGPA() {
+        double avg = studentList.stream().mapToDouble(s -> s.GPA).average().orElse(0.0);
+        System.out.println("\n--- 3. Нийт оюутны дундаж голч дүн ---");
+        System.out.println("Дундаж GPA: " + String.format("%.2f", avg));
+    }
+
+    public void displayStudentsForExclusion() {
+        System.out.println("\n--- 4. Гураваас дээш F авсан (Хасагдах) оюутны жагсаалт ---");
+        
+        for (Student student : studentList) {
+            long fCount = student.lessons.stream().filter(l -> l.getGrade().equals("F")).count();
+            
+            if (fCount >= 3) {
+                System.out.println("❌ " + student.code + " (" + fCount + " F-тэй, GPA: " + String.format("%.2f", student.GPA) + ")");
+            }
+        }
+    }
+
+    public void displayGradesBySubject() {
+        System.out.println("\n--- 5. Хичээл бүрээр оюутнуудын дүнгийн жагсаалт ---");
+        
+        for (Subject subject : subjectList) {
+            System.out.println("\n[ " + subject.toString() + " ]");
+            
+            for (Student student : studentList) {
+                student.lessons.stream()
+                       .filter(l -> l.learned.code.equals(subject.code))
+                       .findFirst()
+                       .ifPresent(lesson -> System.out.println("  - Оюутан " + student.code + ": Оноо=" + lesson.score + ", Үнэлгээ=" + lesson.getGrade()));
+            }
+        }
+    }
+
+    public void displayGradesByMajor() {
+        System.out.println("\n--- 6. Мэргэжил бүрээр оюутнуудын дүнгийн жагсаалт ---");
+        
+        for (Major major : majorList) {
+            System.out.println("\n[ " + major.toString() + " ]");
+            
+            for (Student student : studentList) {
+                String studentMajorCode = student.code.substring(0, 2); 
+                
+                if (studentMajorCode.equals(major.code)) {
+                    System.out.println("  - Оюутан " + student.code + " (GPA: " + String.format("%.2f", student.GPA) + ")");
+                    student.lessons.forEach(lesson -> 
+                        System.out.println("    -> " + lesson.learned.code + ": Оноо=" + lesson.score + ", Үнэлгээ=" + lesson.getGrade())
+                    );
+                }
+            }
+        }
+    }
+    
+
+    public static void main(String[] args) {
+        Registration regSystem = new Registration();
+        
+        System.out.println(">>> МЭДЭЭЛЛИЙГ ФАЙЛААС УНШИЖ, БОЛОВСРУУЛЖ БАЙНА <<<");
+        regSystem.loadDataFromFiles("Subjects.txt", "Professions.txt", "Exams.txt");
+        System.out.println(">>> АМЖИЛТТАЙ! GPA-г тооцоолж дууссан. <<<");
+       
+        regSystem.displaySubjectList();
+        regSystem.displayMajorList();
+        regSystem.displayAverageGPA();
+        regSystem.displayStudentsForExclusion();
+        regSystem.displayGradesBySubject();
+        regSystem.displayGradesByMajor();
+    }
+}
+
